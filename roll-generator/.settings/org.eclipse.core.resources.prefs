@@ -1,2 +1,6 @@
 eclipse.preferences.version=1
+encoding/<project>=MS932
+encoding/Seat.rb=MS932
+encoding/SeminarClass.rb=MS932
 encoding/main.rb=MS932
+separateDerivedEncodings=true

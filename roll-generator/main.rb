@@ -1,6 +1,6 @@
 # vim:set fileencoding=Windows-31J:
 require 'win32ole'
-require 'SeminarClass'
+require './SeminarClass'
 
 def getAbsolutePath filename
   fso = WIN32OLE.new('Scripting.FileSystemObject')
@@ -23,7 +23,7 @@ begin
     unless record[0] == "クラス" then
       puts record.join(",")
       seminarClass = SeminarClass.getInstance(record[0])
-      seminarClass.addGroup(record[1])
+      seminarClass.addGroup(record[1], record[2])
     end
   end
   

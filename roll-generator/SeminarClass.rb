@@ -1,4 +1,4 @@
-require 'SeminarGroup'
+require './SeminarGroup'
 
 class SeminarClass
   attr_reader :name
@@ -28,8 +28,10 @@ class SeminarClass
     @groups = []
   end
   
-  def addGroup name
-    group = SeminarGroup.new(name)
+  def addGroup name, numberOfSeats
+    group = SeminarGroup.new(self, name, numberOfSeats)
+    # グループの重複チェック
+    # 定員の設定/座席の作成
     @groups << group
   end
     
