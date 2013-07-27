@@ -1,4 +1,4 @@
-require './SeminarGroup'
+require 'SeminarGroup'
 
 class SeminarClass
   attr_reader :name

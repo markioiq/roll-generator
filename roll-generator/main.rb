@@ -1,13 +1,16 @@
 # vim:set fileencoding=Windows-31J:
+
+$LOAD_PATH << File.dirname(File.expand_path(__FILE__))
+
 require 'win32ole'
-require './SeminarClass'
+require 'SeminarClass'
 
 def getAbsolutePath filename
   fso = WIN32OLE.new('Scripting.FileSystemObject')
   return fso.GetAbsolutePathName(filename)
 end
 
-filename = getAbsolutePath("座席番号・定員.xlsx")
+filename = getAbsolutePath(File.dirname(File.expand_path(__FILE__)) + "/座席番号・定員.xlsx")
 
 xl = WIN32OLE.new('Excel.Application')
 
@@ -17,7 +20,7 @@ begin
   sheet.UsedRange.Rows.each do |row|
     record = []
     row.Columns.each do |cell|
-      record << cell.Value
+      record << cell.Text
     end
 
     unless record[0] == "クラス" then
