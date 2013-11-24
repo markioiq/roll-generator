@@ -3,36 +3,24 @@ require 'SeminarGroup'
 class SeminarClass
   attr_reader :name
   attr_reader :groups
-  
-  @@instances = Hash.new([])
-  
-  class << self
-    def getInstance(name)
-      key = name.to_s.to_sym
-      if @@instances.has_key?(key) then
-        return @@instances[key]
-      else
-        newInstance = self.new(name)
-        @@instances[key] = newInstance
-        return newInstance
-      end
-    end
-    
-    def getAllInstance
-      return @@instances.values()
-    end
-  end
-  
   def initialize(name)
     @name = name
-    @groups = []
+    @groups = Hash.new { |hash, key|
+      newInstance = SeminarGroup.new(self, key)
+      hash[key] = newInstance
+    }
+
   end
-  
-  def addGroup name, numberOfSeats
-    group = SeminarGroup.new(self, name, numberOfSeats)
-    # グループの重複チェック
-    # 定員の設定/座席の作成
-    @groups << group
+
+  def getAllGroups
+    @groups.values()
   end
-    
+
+  def each_seat(&block)
+    @groups.values().each do |group|
+      group.each_seat(&block)
+    end
+
+  end
+
 end

@@ -6,4 +6,11 @@ class Seat
     @group = group
     @name = name
   end
+  
+  def path
+    string = ""
+    string += @group.seminarClass.name
+    string += "/" + @group.name
+    string += "/" + name
+  end
 end
