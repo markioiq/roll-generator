@@ -32,16 +32,34 @@ def printHash hash
     str += ", "
   }
   str += "]"
-
-  #hash.inject("[") {|result, item|
-  #  p item
-  #}
-
   return str
 end
 
+puts ARGV[0]
+if (ARGV.size() > 0)
+  dir = File.dirname(ARGV[0]) + "/"
+else
+  dir = "./"
+end
+
+# 設定ファイルを読み込む
+costTable = Hash.new
+configLoader = ExcelLoader.new(dir + "/設定.xls");
+configLoader.lines().each do |line|
+  key = line[:属性].to_sym
+  costTable[key] = []
+  configLoader.symbols().each do |sym|
+    if (sym == :属性) then
+      next
+    end
+    costTable[key] << line[sym].to_i
+  end
+end
+#puts printHash(costTable)
+
+# 各クラス・各グループの定員から座席番号を持つ座席オブジェクトを作成する。
 seats = []
-seatLoader = ExcelLoader.new("./座席番号・定員.xls")
+seatLoader = ExcelLoader.new(dir + "/座席番号・定員.xls")
 seatLoader.lines.each do |line|
   numOfSeats = line[:定員].to_i
   for i in 1..numOfSeats
@@ -53,25 +71,20 @@ seatLoader.lines.each do |line|
   end
 end
 
-#classNames = []
-#seatLoader.lines.each do |line|
-#  unless (classNames.include?(line[:クラス])) then
-#    classNames << line[:クラス]
-#  end
-#end
-
-traineeLoader = ExcelLoader.new("./受講者リスト.xls")
+# 受講者ファイルから、受講者オブジェクトを作成する
+traineeLoader = ExcelLoader.new(dir + "/受講者リスト.xls")
 trainees = traineeLoader.lines()
 
-pastRolls = Dir.glob("[^~]*出欠表.xls")
+# 過去の座席表から、同じグループになったことがある受講生間に、コストを上乗せする。
+pastRolls = Dir.glob("[^~]*出欠表*.xls")
 weight = 1
 pastCosts = Hash.new
-pastRolls.each do |pastRoll|
+pastRolls.reverse.each_with_index do |pastRoll, index|
   if (pastRoll == "出欠表.xls") then
     next
   end
 
-  pastTraineeLoader = ExcelLoader.new("./受講者リスト.xls")
+  pastTraineeLoader = ExcelLoader.new(dir + "/受講者リスト.xls")
   pastTrainees = pastTraineeLoader.lines()
 
   (0..pastTrainees.size-1).to_a.combination(2) {|i, j|
@@ -84,13 +97,13 @@ pastRolls.each do |pastRoll|
     end
 
     if (a[:クラス] == b[:クラス] and a[:グループ] == b[:グループ]) then
-      pastCosts[key] += 1 * weight
+      pastCosts[key] += costTable[:過去][index]
     end
   }
 
-  weight *= 2
 end
 
+# 100パターンの座席表を生成し、もっとも総コストの少ないものを採用する
 bestAssignment = []
 bestTotalCost = -1
 100.times { |n|
@@ -111,17 +124,15 @@ bestTotalCost = -1
       next
     end
 
-    cost += 2048 if (a[:性別] == b[:性別])
-    cost += 16 if (a[:係] == b[:係])
-    cost += 8 if (a[:課] == b[:課])
-    cost += 4 if (a[:部] == b[:部])
-    cost += 2 if (a[:職種] == b[:職種])
-    cost += 2 if (a[:役職] == b[:役職])
-    cost += 1 if (a[:年齢層] == b[:年齢層])
+    costTable.keys().each do |key|
+      next if (key == :過去)
 
-    key = if a[:ID] <= b[:ID] then [a[:ID], b[:ID]] else [b[:ID], a[:ID]] end
-    if (pastCosts.has_key?(key)) then
-      cost += pastCosts[key]
+      cost += costTable[key.to_sym][0] if (a[key.to_sym] == b[key.to_sym])
+    end
+
+    pairKey = if a[:ID] <= b[:ID] then [a[:ID], b[:ID]] else [b[:ID], a[:ID]] end
+    if (pastCosts.has_key?(pairKey)) then
+      cost += pastCosts[pairKey]
     end
 
     costs[[i,j]] = cost
@@ -134,45 +145,52 @@ bestTotalCost = -1
   end
 }
 
+# 採用した座席配置をファイルに書き出す
+targetFileLoader = ExcelLoader.new(dir + "/出欠表.xlt")
+targetFileSymbols = targetFileLoader.symbols
+
 xl = WIN32OLE.new('Excel.Application')
-rollBook = xl.Workbooks.add(getAbsolutePath("./出欠表.xlt"))
-seatBook = xl.Workbooks.open(getAbsolutePath("./座席番号・定員.xls"))
+rollBook = xl.Workbooks.add(getAbsolutePath(dir + "/出欠表.xlt"))
+#seatBook = xl.Workbooks.open(getAbsolutePath("./座席番号・定員.xls"))
 begin
   #xl.visible = true
   #rollBook.activate
   #puts xl.Application.Dialogs(Excel::XlDialogSaveAs).show()
   tmp = xl.DisplayAlerts
   xl.DisplayAlerts = false
-  rollBook.saveAs(getAbsolutePath('./出欠表.xls'), Excel::XlWorkbookNormal)
+  rollBook.saveAs(getAbsolutePath(dir + '/出欠表.xls'), Excel::XlWorkbookNormal)
   #puts xl.Application.GetSaveAsFilename(getAbsolutePath("."), "座席表Excelファイル, *.xlsx;*.xls")
   xl.DisplayAlerts = tmp
 
   sheet = rollBook.WorkSheets('出欠表')
-  bestAssignment.each_with_index { |trainee, index|
-    sheet.Rows(index+2).Columns(1).value = index
-    sheet.Rows(index+2).Columns(2).value = trainee[:ID]
-    sheet.Rows(index+2).Columns(3).value = trainee[:部]
-    sheet.Rows(index+2).Columns(4).value = trainee[:課]
-    sheet.Rows(index+2).Columns(5).value = trainee[:係]
-    sheet.Rows(index+2).Columns(6).value = trainee[:役職]
-    sheet.Rows(index+2).Columns(7).value = trainee[:氏] + "　" + trainee[:名]
-    sheet.Rows(index+2).Columns(8).value = trainee[:座席][:クラス]
-    sheet.Rows(index+2).Columns(9).value = trainee[:座席][:グループ]
-    sheet.Rows(index+2).Columns(10).value = trainee[:座席][:番号]
+  bestAssignment.each_with_index { |trainee, lineNumber|
+    targetFileSymbols.each_with_index { |symbol, columnNumber|
+      if (symbol == "No.".to_sym)
+        sheet.Rows(lineNumber+2).Columns(columnNumber+1).value = lineNumber + 1
+        next
+      end
+      
+      # 座席番号を出力
+      if ([:クラス, :グループ, :番号].include?(symbol))
+        sheet.Rows(lineNumber+2).Columns(columnNumber+1).value = trainee[:座席][symbol]
+        next
+      end
 
-    sheet.Rows(index+2).Columns(13).value = trainee[:性別]
+      # 属性を出力      
+      sheet.Rows(lineNumber+2).Columns(columnNumber+1).value = trainee[symbol]
+    }
   }
   rollBook.save
 
   puts 'aaa'
   #newSheat = rollBook.WorkSheets.add
   #newSheat.name = 'クラス11'
-  addr = seatBook.WorkSheets(2).copy("after"=>sheet)
-  xl.ActiveSheet.Name = 'クラス11'
+  #addr = seatBook.WorkSheets(2).copy("after"=>sheet)
+  #xl.ActiveSheet.Name = 'クラス11'
   rollBook.save
   puts 'bbb'
 ensure
   rollBook.close
-  seatBook.close
+  # seatBook.close
   xl.Quit
 end

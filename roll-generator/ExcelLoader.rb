@@ -3,16 +3,16 @@ require 'win32ole'
 class ExcelLoader
   attr_reader :symbols
   attr_reader :lines
-  def initialize(excelFileName)
+  def initialize(excelFileName, sheet = 1)
     @symbols = []
     @lines = []
 
     excel = WIN32OLE.new('Excel.Application')
     filename = getAbsolutePath(excelFileName)
-    book = excel.Workbooks.Open(filename)
+    book = excel.Workbooks.Open(filename: filename, readOnly: true)
     
     begin
-      sheet = book.WorkSheets(1)
+      sheet = book.WorkSheets(sheet)
       sheet.UsedRange.Rows.each do |row|
         if (row.Row == 1) then
           row.Columns.each do |column|
