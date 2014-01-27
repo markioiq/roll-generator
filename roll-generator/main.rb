@@ -35,7 +35,6 @@ def printHash hash
   return str
 end
 
-puts ARGV[0]
 if (ARGV.size() > 0)
   dir = File.dirname(ARGV[0]) + "/"
 else
@@ -175,6 +174,12 @@ begin
         sheet.Rows(lineNumber+2).Columns(columnNumber+1).value = trainee[:座席][symbol]
         next
       end
+      
+      if (:座席番号 == symbol)
+        sheet.Rows(lineNumber+2).Columns(columnNumber+1).value = 
+          trainee[:座席][:クラス].to_s + "-" + trainee[:座席][:グループ].to_s + "-" + trainee[:座席][:番号].to_s 
+        next
+      end
 
       # 属性を出力      
       sheet.Rows(lineNumber+2).Columns(columnNumber+1).value = trainee[symbol]
@@ -182,13 +187,11 @@ begin
   }
   rollBook.save
 
-  puts 'aaa'
   #newSheat = rollBook.WorkSheets.add
   #newSheat.name = 'クラス11'
   #addr = seatBook.WorkSheets(2).copy("after"=>sheet)
   #xl.ActiveSheet.Name = 'クラス11'
   rollBook.save
-  puts 'bbb'
 ensure
   rollBook.close
   # seatBook.close
