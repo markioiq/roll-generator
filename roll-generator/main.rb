@@ -36,12 +36,13 @@ def printHash hash
 end
 
 if (ARGV.size() > 0)
-  dir = File.dirname(ARGV[0]) + "/"
+  dir = File.dirname(ARGV[0])
 else
-  dir = "./"
+  dir = "."
 end
 
 # 設定ファイルを読み込む
+puts "設定ファイルを読み込みます: " + dir + "/設定.xls"
 costTable = Hash.new
 configLoader = ExcelLoader.new(dir + "/設定.xls");
 configLoader.lines().each do |line|
@@ -57,6 +58,7 @@ end
 #puts printHash(costTable)
 
 # 各クラス・各グループの定員から座席番号を持つ座席オブジェクトを作成する。
+puts "座席番号・定員ファイルを読み込みます: " + dir + "/座席番号・定員.xls"
 seats = []
 seatLoader = ExcelLoader.new(dir + "/座席番号・定員.xls")
 seatLoader.lines.each do |line|
@@ -71,11 +73,12 @@ seatLoader.lines.each do |line|
 end
 
 # 受講者ファイルから、受講者オブジェクトを作成する
+puts "受講者リストファイルを読み込みます: " + dir + "/受講者リスト.xls"
 traineeLoader = ExcelLoader.new(dir + "/受講者リスト.xls")
 trainees = traineeLoader.lines()
 
 # 過去の座席表から、同じグループになったことがある受講生間に、コストを上乗せする。
-pastRolls = Dir.glob("[^~]*出欠表*.xls")
+pastRolls = Dir.glob(dir + "/[^~]*出欠表*.xls")
 weight = 1
 pastCosts = Hash.new
 pastRolls.reverse.each_with_index do |pastRoll, index|
@@ -83,6 +86,7 @@ pastRolls.reverse.each_with_index do |pastRoll, index|
     next
   end
 
+  puts "過去の座席表ファイルを読み込みます: " + pastRoll
   pastTraineeLoader = ExcelLoader.new(dir + "/受講者リスト.xls")
   pastTrainees = pastTraineeLoader.lines()
 
@@ -137,7 +141,7 @@ bestTotalCost = -1
     costs[[i,j]] = cost
   }
   totalCost = costs.values().inject {|result, value| result + value }
-  #puts "合計コスト(#{n}): " + totalCost.to_s
+  puts "合計コスト(#{n+1}回目の座席配置パターン):\t" + totalCost.to_s
   if (bestTotalCost < 0 or totalCost < bestTotalCost) then
     bestAssignment = assignedTrainees
     bestTotalCost = totalCost
@@ -145,6 +149,7 @@ bestTotalCost = -1
 }
 
 # 採用した座席配置をファイルに書き出す
+puts "ベストな座席配置をファイルに書き出します: " + dir + "/出欠表.xlt"
 targetFileLoader = ExcelLoader.new(dir + "/出欠表.xlt")
 targetFileSymbols = targetFileLoader.symbols
 
@@ -175,14 +180,17 @@ begin
         next
       end
       
-      if (:座席番号 == symbol)
-        sheet.Rows(lineNumber+2).Columns(columnNumber+1).value = 
-          trainee[:座席][:クラス].to_s + "-" + trainee[:座席][:グループ].to_s + "-" + trainee[:座席][:番号].to_s 
+      #if (:座席番号 == symbol)
+      #  sheet.Rows(lineNumber+2).Columns(columnNumber+1).value = 
+      #    trainee[:座席][:クラス].to_s + "-" + trainee[:座席][:グループ].to_s + "-" + trainee[:座席][:番号].to_s 
+      #  next
+      #end
+
+      # 属性を出力 
+      if (trainee.has_key?(symbol))
+        sheet.Rows(lineNumber+2).Columns(columnNumber+1).value = trainee[symbol]
         next
       end
-
-      # 属性を出力      
-      sheet.Rows(lineNumber+2).Columns(columnNumber+1).value = trainee[symbol]
     }
   }
   rollBook.save
