@@ -5,15 +5,15 @@ $LOAD_PATH << MAIN_DIR
 
 require 'win32ole'
 
-#require 'SeatManager'
-require 'ExcelLoader'
-
 module Excel
 end
 
 excel = WIN32OLE.new('Excel.Application')
 excel.Quit
 WIN32OLE.const_load(excel, Excel)
+
+require 'ExcelLoader'
+
 
 def getAbsolutePath filename
   fso = WIN32OLE.new('Scripting.FileSystemObject')
@@ -55,7 +55,6 @@ configLoader.lines().each do |line|
     costTable[key] << line[sym].to_i
   end
 end
-#puts printHash(costTable)
 
 # 各クラス・各グループの定員から座席番号を持つ座席オブジェクトを作成する。
 puts "座席番号・定員ファイルを読み込みます: " + dir + "/座席番号・定員.xls"
@@ -87,7 +86,7 @@ pastRolls.reverse.each_with_index do |pastRoll, index|
   end
 
   puts "過去の座席表ファイルを読み込みます: " + pastRoll
-  pastTraineeLoader = ExcelLoader.new(dir + "/受講者リスト.xls")
+  pastTraineeLoader = ExcelLoader.new(pastRoll, "出欠表")
   pastTrainees = pastTraineeLoader.lines()
 
   (0..pastTrainees.size-1).to_a.combination(2) {|i, j|
@@ -155,16 +154,11 @@ targetFileSymbols = targetFileLoader.symbols
 
 xl = WIN32OLE.new('Excel.Application')
 rollBook = xl.Workbooks.add(getAbsolutePath(dir + "/出欠表.xlt"))
-#seatBook = xl.Workbooks.open(getAbsolutePath("./座席番号・定員.xls"))
 begin
-  #xl.visible = true
-  #rollBook.activate
-  #puts xl.Application.Dialogs(Excel::XlDialogSaveAs).show()
+  rollBook.CheckCompatibility = false
   tmp = xl.DisplayAlerts
   xl.DisplayAlerts = false
   rollBook.saveAs(getAbsolutePath(dir + '/出欠表.xls'), Excel::XlWorkbookNormal)
-  #puts xl.Application.GetSaveAsFilename(getAbsolutePath("."), "座席表Excelファイル, *.xlsx;*.xls")
-  xl.DisplayAlerts = tmp
 
   sheet = rollBook.WorkSheets('出欠表')
   bestAssignment.each_with_index { |trainee, lineNumber|
@@ -189,19 +183,14 @@ begin
       # 属性を出力 
       if (trainee.has_key?(symbol))
         sheet.Rows(lineNumber+2).Columns(columnNumber+1).value = trainee[symbol]
+        sheet.Rows(lineNumber+2).Columns(columnNumber+1).wrapText = false
         next
       end
     }
   }
   rollBook.save
-
-  #newSheat = rollBook.WorkSheets.add
-  #newSheat.name = 'クラス11'
-  #addr = seatBook.WorkSheets(2).copy("after"=>sheet)
-  #xl.ActiveSheet.Name = 'クラス11'
-  rollBook.save
 ensure
   rollBook.close
-  # seatBook.close
+  xl.DisplayAlerts = tmp
   xl.Quit
 end
