@@ -36,7 +36,7 @@ def printHash hash
 end
 
 if (ARGV.size() > 0)
-  dir = File.dirname(ARGV[0])
+  dir = File.expand_path(File.dirname(ARGV[0]))
 else
   dir = "."
 end
