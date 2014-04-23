@@ -13,4 +13,5 @@ class Seat
     string += "/" + @group.name
     string += "/" + name
   end
+  
 end
